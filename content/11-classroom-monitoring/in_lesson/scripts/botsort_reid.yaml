@@ -1,0 +1,18 @@
+# BoT-SORT + ReID — tuned for a static classroom camera with frequent occlusion.
+# Based on Ultralytics defaults; changed values are commented.
+
+tracker_type: botsort
+
+track_high_thresh: 0.4    # default 0.25 -> primary match stage trusts detections a bit more
+track_low_thresh: 0.1     # default, matches CONF_THRESH in the script (occlusion-recovery band)
+new_track_thresh: 0.6     # default 0.25 -> higher bar to spawn a brand-new Student ID (less ID churn)
+track_buffer: 90          # default 30 -> ~3s of occlusion tolerance at 30fps before a track is dropped
+match_thresh: 0.8
+fuse_score: True
+
+gmc_method: sparseOptFlow # camera motion compensation; set to "none" for a speed bump on a static camera
+
+with_reid: True            # appearance matching -> the main defense against ID switches on occlusion
+model: auto                 # lightweight built-in ReID model, auto-downloaded on first run
+proximity_thresh: 0.5
+appearance_thresh: 0.8     # default, deliberately strict: don't let similar-looking students swap IDs
