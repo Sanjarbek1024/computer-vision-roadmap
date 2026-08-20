@@ -1,0 +1,18 @@
+# ByteTrack - motion only, no appearance. Kept for the roadmap's
+# "experiment and compare" step:
+#
+#   python run.py --tracker configs/bytetrack.yaml --session bytetrack_run
+#   python run.py --tracker configs/botsort_reid.yaml --session botsort_run
+#   python tools/report.py --compare bytetrack_run botsort_run
+#
+# Thresholds match the BoT-SORT configs on purpose, so the comparison measures
+# the tracker, not the tuning.
+
+tracker_type: bytetrack
+
+track_high_thresh: 0.20
+track_low_thresh: 0.08
+new_track_thresh: 0.25
+track_buffer: 150
+match_thresh: 0.85
+fuse_score: True

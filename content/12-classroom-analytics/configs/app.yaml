@@ -1,0 +1,154 @@
+# Classroom Analytics - application configuration.
+#
+# Every key here mirrors a field in classroom_analytics/config.py, where the
+# defaults and the reasoning live. Anything you delete falls back to that
+# default, so this file can be as short as you like.
+#
+# Precedence: built-in defaults < this file < command-line flags.
+
+source:
+  # A file path, an rtsp:// URL, a webcam index ("0"), or "env:VAR_NAME".
+  # env: keeps the camera password out of git - see .env.example.
+  path: env:CLASSROOM_RTSP_URL
+  # Used when the above resolves to nothing, so the demo always runs.
+  fallback: ../11-classroom-monitoring/demo/class_videos/camera_test.mp4
+
+  frame_stride: 1          # 2 = analyse every second frame (halves the load)
+  start_frame: 0
+  max_frames: 0            # 0 = the whole source
+
+  drop_late_frames: true   # live sources: always analyse the newest frame
+  reconnect_attempts: 10
+  reconnect_delay_s: 3.0
+  rtsp_transport: tcp
+
+preprocess:
+  clahe: false             # turn on for a dim or heavily backlit room
+  clahe_clip: 2.0
+  clahe_grid: 8
+  denoise: false
+
+detect:
+  model: yolo11n.pt        # nano - the roadmap's baseline detector
+  imgsz: 960               # 640 misses students in the back rows; 960 is the
+                           # sweet spot for a 1080p classroom camera
+  conf: 0.10               # LOW on purpose: weak detections are what the
+                           # tracker's second stage uses to survive occlusion.
+                           # Nothing is *reported* at this confidence - see
+                           # track.min_hits / track.confirm_conf below.
+  iou: 0.7
+  max_det: 100
+  device: ""               # "" = auto, "cpu", "0" = first GPU
+  classes: [0]             # 0 = person. Nothing else is tracked.
+
+  # Geometry gates - a box that cannot physically be a student is dropped.
+  min_area_frac: 0.0004    # of the frame area
+  max_area_frac: 0.55
+  min_aspect: 0.55         # height / width
+  max_aspect: 6.0
+  min_box_px: 18
+  duplicate_iou: 0.85      # near-identical boxes = one person counted twice
+  containment_thresh: 0.80 # nested boxes (torso inside body) = same person
+
+track:
+  tracker: configs/botsort_reid.yaml
+  fallback_tracker: configs/botsort_fast.yaml
+
+  min_hits: 20             # frames a track must survive to become "Student N".
+                           # 20 frames = 1 second at 20 fps: scale it with your
+                           # camera's frame rate. This, not the confidence
+                           # threshold, is what keeps phantoms out.
+  confirm_conf: 0.25       # smoothed confidence required to confirm
+  drop_conf: 0.20          # below this, an occluded student gets only
+                           # half the coasting budget
+  conf_ema: 0.15
+
+  max_coast_frames: 45     # hold an occluded student on prediction alone
+  forget_after_s: 20.0     # then finally record them as having left
+  duplicate_student_iou: 0.55  # a new track overlapping an on-screen
+                           # student this much is a split identity, not a
+                           # second person - it gets thrown away
+
+kalman:
+  enabled: true
+  std_position: 0.045      # smaller = smoother, lazier boxes
+  std_velocity: 0.007
+  std_measurement: 0.045
+  gate_chi2: 9.4877        # chi-square, 4 dof, 95% - reject implausible jumps
+  reject_outliers: true
+  size_ema: 0.25           # extra smoothing on width/height
+
+reid:
+  enabled: true            # rebind a returning student to their original number
+  max_gap_s: 25.0
+  max_distance_scale: 2.2  # search radius = this x box height
+  min_appearance: 0.45
+  min_score: 0.55
+  w_appearance: 0.5
+  w_distance: 0.3
+  w_iou: 0.2
+  coasting_iou: 0.35       # a new track landing on a coasting student's
+                           # predicted box is that student, renumbered
+
+zones:
+  enabled: true
+  grid_rows: 3
+  grid_cols: 3
+  row_names: [front, middle, back]
+  col_names: [left, center, right]
+  draw: true
+
+  # Explicit zones win over the grid. Normalized coordinates (0..1), so the
+  # same numbers work at any resolution:
+  # polygons:
+  #   teacher_desk: [[0.05, 0.55], [0.30, 0.55], [0.30, 0.95], [0.05, 0.95]]
+  #   door:         [[0.85, 0.40], [1.00, 0.40], [1.00, 0.90], [0.85, 0.90]]
+  polygons: {}
+
+  # Ignore anything whose feet land outside this polygon (e.g. a corridor seen
+  # through the door). Empty = watch the whole frame.
+  roi: []
+
+motion:
+  enabled: true
+  history: 500
+  var_threshold: 40.0
+  detect_shadows: true
+  scale: 0.4
+  open_kernel: 3
+  speed_px_per_s: 45.0     # Kalman speed above this = walking
+  activity_frac: 0.06      # changed pixels in the box = moving in place.
+                           # Measured: a fidgeting seated student peaks near
+                           # 0.10, a still one near 0.00
+  min_frames: 5            # debounce, so a flicker is not an event
+
+output:
+  dir: outputs
+  session_name: ""         # "" = session_<timestamp>
+  save_video: true
+  save_csv: true
+  save_json: true
+  save_sqlite: true
+  save_snapshots: true
+  save_heatmap: true
+  sample_every: 1          # write a track row every N frames
+  trajectory_every: 5
+  occupancy_bucket_s: 10.0
+  snapshot_min_conf: 0.45  # preferred, not required: every confirmed student
+                           # gets their best crop even if never this confident
+  flush_every: 200
+
+view:
+  show: true
+  window: Classroom Analytics
+  draw_trail: true
+  trail_length: 40
+  draw_hud: true
+  hud_position: top-right  # move it if your camera burns its timestamp
+                           # into that corner: top-left | top-right |
+                           # bottom-left | bottom-right
+  hud_opacity: 0.85
+  draw_predicted: true     # dashed box while a student is occluded
+  box_thickness: 2
+  font_scale: 0.45
+  progress_every: 50

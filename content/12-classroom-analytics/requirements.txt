@@ -1,0 +1,10 @@
+# Extra packages this app needs on top of the roadmap's base environment
+# (opencv-python, numpy, matplotlib are already in ../../requirements.txt).
+#
+#   pip install -r requirements.txt
+
+ultralytics>=8.3            # YOLO11 + BoT-SORT / ByteTrack
+torch>=2.2                  # ultralytics backend; CPU wheels are fine
+torchvision>=0.17
+lap>=0.5                    # linear assignment used by the trackers
+PyYAML>=6.0                 # config files

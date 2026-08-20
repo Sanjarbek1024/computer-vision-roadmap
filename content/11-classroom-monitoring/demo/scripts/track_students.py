@@ -7,7 +7,7 @@ from ultralytics import YOLO
 
 
 BASE = Path("content/11-classroom-monitoring/demo")
-VIDEO = BASE / "class_videos/class_video.mp4"
+VIDEO = BASE / "class_videos/camera_test.mp4"
 TRACKER = BASE / "scripts/botsort_classroom.yaml"
 OUTPUT = BASE / "outputs"
 
